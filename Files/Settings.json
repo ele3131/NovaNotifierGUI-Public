@@ -1,0 +1,9 @@
+{
+    "SM": 30,
+    "LM": 45,
+    "median_filter": 0,
+    "timer_refresh": 180,
+    "sell_filter": 0,
+    "token": "",
+    "browser": "none"
+}
