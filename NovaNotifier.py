@@ -12,7 +12,6 @@ import pytz
 if platform == "win32":
     from win10toast_persist import ToastNotifier
 
-    
 class Optional():
     async def set_date(self):
         today = datetime.now(pytz.timezone('US/Pacific'))
@@ -35,9 +34,12 @@ class NovaNotifier():
         self.cookies = []
         self.items = {}
         self.result = []
+        self.market_data = {}
+        self.history_data = {}
+        self.icon_data = {}
 
     async def start(self):
-        self.sema = BoundedSemaphore(5)
+        self.sema = BoundedSemaphore(3)
 
         self.read_settings()
         await self.login()
@@ -46,9 +48,7 @@ class NovaNotifier():
             self.read_id()
             self.read_icons()
 
-        self.filter_medians(self.items)
         await self.network_items(self.items, self.cookies[0])
-        self.filter_medians(self.items)
 
         self.set_names(self.items)
         self.medians_history(self.items)
@@ -60,7 +60,6 @@ class NovaNotifier():
         await self.network_items(self.items, self.cookies[0])
         self.medians_history(self.items)
         self.set_names(self.items)
-        self.filter_medians(self.items)
         self.format(self.items)
         self.make_table(self.items)
         self.save_data(self.items)
@@ -132,10 +131,7 @@ class NovaNotifier():
                 pass
 
     def read_settings(self):
-        """ dict: SM, LM, median_filter, timer_interval, sell_filter, token and browser"""
-
-        # settings = {'SM': 15, 'LM': 60, 'median_filter': 0, 'timer_refresh': 180,
-        #           'sell_filter': 0, 'token': 0, 'browser': 'none'}
+        """ dict: SM, LM, median_filter, timer_refresh, sell_filter, token and browser"""
 
         with open('Files/Settings.json', 'r') as f:
             self.settings = load(f)
@@ -180,75 +176,94 @@ class NovaNotifier():
     async def network_market_request(self, item, session):
         url = "https://www.novaragnarok.com/?module=vending&action=item&id=" + item['id']
         fail = 0
-        while fail < 3:
-            try:
-                async with self.sema:
-                    async with session.get(url, timeout=5) as response:
-                        if response.status == 200:
-                            item['market_data'] = str(await response.content.read())
-                            self.status_lbl[0] = (f"Retrieving ({str(self.network_count['each'])}" +
-                                                  f"/{str(self.network_count['total'])})")
-                            self.network_count['each'] += 1
-                            return
-                        else:
-                            print(response.status)
-                            fail += 1
-                            await sleep(3)
-            except TimeoutError:
-                await sleep(3)
-                fail += 1
-        raise NameError('Retrieving Market Failed 3 Times')
-
-    async def network_history_request(self, item, session):
-        if item['long_med'] is None:
-            url = "https://www.novaragnarok.com/?module=vending&action=itemhistory&id=" + item['id']
-            fail = 0
+        if item['id'] not in self.market_data.keys():
+            self.market_data[item['id']] = True
             while fail < 3:
-                async with self.sema:
-                    try:
+                try:
+                    async with self.sema:
                         async with session.get(url, timeout=5) as response:
                             if response.status == 200:
-                                item['history_data'] = str(await response.content.read())
+                                item['market_data'] = str(await response.content.read())
+                                self.market_data[item['id']] = item['market_data']
                                 self.status_lbl[0] = (f"Retrieving ({str(self.network_count['each'])}" +
                                                       f"/{str(self.network_count['total'])})")
                                 self.network_count['each'] += 1
                                 return
                             else:
+                                print(response.status)
                                 fail += 1
                                 await sleep(3)
-                    except TimeoutError:
-                        await sleep(3)
-                        fail += 1
-            raise NameError('Retrieving History Failed 3 Times')
+                except TimeoutError:
+                    await sleep(3)
+                    fail += 1
+            raise NameError('Retrieving Market Failed 3 Times')
+
+    async def network_history_request(self, item, session):
+        if item['long_med'] is None:
+            if item['id'] not in self.history_data.keys():
+                self.history_data[item['id']] = True
+                url = "https://www.novaragnarok.com/?module=vending&action=history&id=" + item['id']
+                fail = 0
+                while fail < 3:
+                    async with self.sema:
+                        try:
+                            async with session.get(url, timeout=5) as response:
+                                if response.status == 200:
+                                    item['history_data'] = str(await response.content.read())
+                                    self.history_data[item['id']] = item['history_data']
+                                    self.status_lbl[0] = (f"Retrieving ({str(self.network_count['each'])}" +
+                                                          f"/{str(self.network_count['total'])})")
+                                    self.network_count['each'] += 1
+                                    return
+                                else:
+                                    fail += 1
+                                    await sleep(3)
+                        except TimeoutError:
+                            await sleep(3)
+                            fail += 1
+                raise NameError('Retrieving History Failed 3 Times')
+        else:
+            self.history_data[item['id']] = ''
 
     async def network_icon_request(self, item, session):
         if 'icon' not in item.keys():
             icon_url = 'https://www.novaragnarok.com/data/items/icons2/' + item['id'] + '.png'
-            fail = 0
-            while fail < 3:
-                async with self.sema:
-                    try:
-                        async with session.get(icon_url, timeout=4) as response:
-                            if response.status == 200:
-                                icon_file = await response.read()
-                                with open('Icons/' + item['id'] + '.png', 'wb+') as f:
-                                    f.write(icon_file)
-                                item['icon'] = QPixmap('Icons/' + item['id'] + '.png')
-                                return
-                            else:
-                                fail += 1
-                                await sleep(3)
-                    except TimeoutError:
-                        await sleep(3)
-                        fail += 1
-            raise NameError('Retrieving Icon Failed 3 Times')
-        
+            if item['id'] not in self.icon_data.keys():
+                self.icon_data[item['id']] = True
+                fail = 0
+                while fail < 3:
+                    async with self.sema:
+                        try:
+                            async with session.get(icon_url, timeout=4) as response:
+                                if response.status == 200:
+                                    icon_file = await response.read()
+                                    with open('Icons/' + item['id'] + '.png', 'wb+') as f:
+                                        f.write(icon_file)
+                                    item['icon'] = QPixmap('Icons/' + item['id'] + '.png')
+                                    self.icon_data[item['id']] = item['icon']
+                                    return
+                                else:
+                                    fail += 1
+                                    await sleep(3)
+                        except TimeoutError:
+                            await sleep(3)
+                            fail += 1
+                raise NameError('Retrieving Icon Failed 3 Times')
+        else:
+            self.icon_data[item['id']] = item['icon']
+
     async def network_items(self, items, cookie):
         self.network_count = {'each': 1, 'total': len(items)}
 
-        for item in items.values():
-            if item['long_med'] is None:
-                self.network_count['total'] += 1
+        cont = []
+        i = 0
+        for key in items:
+            if items[key]['id'] not in cont:
+                cont.append(items[key]['id'])
+                if items[key]['long_med'] is None:
+                    i += 1
+
+        self.network_count['total'] = len(cont) + i
 
         self.status_lbl[0] = (f"Retrieving ({str(self.network_count['each'])}" +
                               f"/{str(self.network_count['total'])})")
@@ -261,6 +276,13 @@ class NovaNotifier():
 
         async with ClientSession() as session:
             await gather(*[self.network_icon_request(item, session) for item in items.values()])
+
+        for key in items.keys():
+            items[key]['market_data'] = self.market_data[items[key]['id']]
+            items[key]['history_data'] = self.history_data[items[key]['id']]
+            items[key]['icon'] = self.icon_data[items[key]['id']]
+
+        self.market_data, self.icon_data = {}, {}
 
     def set_names(self, items):
         for item in items.values():
@@ -282,6 +304,7 @@ class NovaNotifier():
         prop_column = '<th>Additional Properties</th>' in history
         find_price = history.split('</span>z')
         size = len(find_price) - 2
+        interval = [self.settings['SM'], self.settings['LM']]
 
         i = 0
         # Refine column present
@@ -291,12 +314,13 @@ class NovaNotifier():
                 if item_refine == refine:
                     if self.property_check(prop_column, prop, find_price[i + 1]):
                         date = find_price[i].rsplit(' - ', 1)[0].rsplit(">", 1)[1].split('/')
-                        if self.date(date, self.settings['LM'], today):
+                        call = self.date(date, interval, today)
+                        if call[0] is True:
                             long_med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
-                            if self.date(date, self.settings['SM'], today):
+                            if call[1] is True:
                                 med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
-                        else:
-                            break
+                            else:
+                                break
                 i += 1
 
         # Refine column missing
@@ -304,12 +328,14 @@ class NovaNotifier():
             while i < size:
                 if self.property_check(prop_column, prop, find_price[i + 1]):
                     date = find_price[i].rsplit(' - ', 1)[0].rsplit(">", 1)[1].split('/')
-                    if self.date(date, self.settings['LM'], today):
-                        long_med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
-                        if self.date(date, self.settings['SM'], today):
-                            med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
-                    else:
-                        break
+                    call = self.date(date, interval, today)
+                    if self.date(date, interval, today):
+                        if call[0] is True:
+                            long_med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
+                            if call[1] is True:
+                                med.append(int(find_price[i].rsplit('>', 1)[-1].replace(',', '')))
+                            else:
+                                break
                 i += 1
 
         if med and long_med:
@@ -451,15 +477,18 @@ class NovaNotifier():
 
     def date(self, date, interval, today=None, args=None):
         if not args:
+            result = [False, False]
             date = pytz.timezone('US/Pacific').localize(datetime(2000 + int(date[2]),
                                                                  int(date[0]),
                                                                  int(date[1])))
             time = today - date
 
-            if time.days <= interval:
-                return 1
-            else:
-                return 0
+            if time.days <= interval[0]:
+                result[0] = True
+                if time.days <= interval[1]:
+                    result[1] = True
+
+            return result
         else:
             date1 = date.split('-')[0].replace(' ', '').split('/')
             date2 = date.split('-')[1].replace(' ', '').split(':')
