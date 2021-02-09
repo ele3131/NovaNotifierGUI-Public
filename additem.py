@@ -36,11 +36,9 @@ class AddItem(QWidget):
         self.tbl.setHorizontalHeaderLabels(headers)
         self.tbl.setCornerButtonEnabled(False)
         self.tbl.horizontalHeader().setSectionResizeMode(True)
-        # self.tbl.cellDoubleClicked.connect(self.delete_item)
         self.tbl.cellDoubleClicked.connect(self.delete_confirmation)
-        # self.tbl.verticalHeader().setSectionResizeMode(True)
 
-        self.lbl_tbl_title = QLabel("List of searched items # Delete = Double Click Row")
+        self.lbl_tbl_title = QLabel("List of searched items / # Delete = Double Click Row")
         self.lbl_tbl_title.setAlignment(Qt.AlignCenter)
         self.lbl_id = QLabel("ID: ")
         self.lbl_refine = QLabel("Refine: ")
@@ -194,13 +192,13 @@ class AddItem(QWidget):
     def add_data(self, new_item):
         prop = sorted([item.strip() for item in new_item[2].split(',')])
         prop_key = ', '.join(prop)
-        self.save = self.items[str((new_item[0], int(new_item[1]), prop_key))] = {'id': new_item[0],
-                                                                                  'name': 'Unknown',
-                                                                                  'refine': int(new_item[1]),
-                                                                                  'property': prop,
-                                                                                  'alert': int(new_item[3]),
-                                                                                  'short_med': None,
-                                                                                  'long_med': None}
+        self.items[str((new_item[0], new_item[1], prop_key))] = {'id': new_item[0],
+                                                                 'name': 'Unknown',
+                                                                 'refine': int(new_item[1]),
+                                                                 'property': prop,
+                                                                 'alert': int(new_item[3]),
+                                                                 'short_med': None,
+                                                                 'long_med': None}
 
     def save_data(self, items):
         self.nova_notifier.save_data(items)
