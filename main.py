@@ -5,7 +5,7 @@ from asyncio import sleep, create_task, set_event_loop, Event, \
 from asyncqt import QEventLoop, asyncSlot
 from PyQt5.QtWidgets import QMainWindow, QWidget, QTableWidgetItem, \
                             QLabel, QVBoxLayout, QApplication
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5 import QtCore
 from motor.motor_asyncio import AsyncIOMotorClient
 from additem import AddItem
@@ -17,7 +17,7 @@ from NovaNotifier import NovaNotifier
 
 
 # Tokens / Sensitive information should be hidden with .env file (Environment Variables)
-TKN_MONGOdb = 'Insert Here your MongoDB Token'
+TKN_MONGOdb = 'Insert Here Your MongoDB Token'
 
 
 class MainWindow0(QMainWindow, MainWindow):
@@ -66,16 +66,17 @@ class MainWindow0(QMainWindow, MainWindow):
                 NovaBot(self.db, self.channel, self.lbl_last_notif)
                 bot_on = True
             if bot_on:
-                self.lbl_last_notif.setText("<font color=\"#2ED03C\">Host: Hosting!")
+                pass
+                #self.lbl_last_notif.setText("<font color=\"#2ED03C\">Host: Hosting!")
             else:
-                self.lbl_last_notif.setText("Host: Not Hosting!")
+                pass
+                #self.lbl_last_notif.setText("Host: Not Hosting!")
 
             await sleep(15)
 
     @asyncSlot()
     async def open_settings(self):
-        if not self.nova_notifier.settings:
-            self.nova_notifier.read_settings()
+        self.nova_notifier.read_settings()
         self.popup_settings = PopupSettings(self.nova_notifier.settings)
         self.popup_settings.btn_save.clicked.connect(self.submit_settings)
         self.popup_settings.btn_reset_cache.clicked.connect(self.reset_cache)
@@ -95,6 +96,10 @@ class MainWindow0(QMainWindow, MainWindow):
             self.nova_notifier.settings['browser'] = 'chrome'
         else:
             self.nova_notifier.settings['browser'] = 'none'
+
+        if self.nova_notifier.settings['timer_refresh'] < 60:
+             self.nova_notifier.settings['timer_refresh'] = 60
+
         self.popup_settings.close()
         self.nova_notifier.write_settings()
 
@@ -103,16 +108,22 @@ class MainWindow0(QMainWindow, MainWindow):
         msg = 'Do you want to reset medians?'
         self.popup_confirm = Popupdelete(msg)
         self.popup_confirm.btn_yes.clicked.connect(self.nova_notifier.medians_reset)
+        self.popup_confirm.btn_yes.clicked.connect(self.btn_stop.click)
         self.popup_confirm.btn_yes.clicked.connect(self.popup_confirm.close)
         self.popup_confirm.btn_no.clicked.connect(self.popup_confirm.close)
 
     @asyncSlot()
     async def reset_discord(self):
-        msg = 'Do you want to reset discord?'
-        self.popup_confirm = Popupdelete(msg)
-        self.popup_confirm.btn_yes.clicked.connect(self.nova_notifier.discord_reset)
-        self.popup_confirm.btn_yes.clicked.connect(self.popup_confirm.close)
-        self.popup_confirm.btn_no.clicked.connect(self.popup_confirm.close)
+        self.channel = None
+        self.nova_notifier.channel = self.channel
+        self.nova_notifier.settings['token'] = None
+        self.nova_notifier.write_settings()
+
+        # msg = 'Do you want to reset discord?'
+        # self.popup_confirm = Popupdelete(msg)
+        # self.popup_confirm.btn_yes.clicked.connect(self.nova_notifier.discord_reset)
+        # self.popup_confirm.btn_yes.clicked.connect(self.popup_confirm.close)
+        # self.popup_confirm.btn_no.clicked.connect(self.popup_confirm.close)
 
     @asyncSlot()
     async def discord_integration(self):
@@ -140,11 +151,9 @@ class MainWindow0(QMainWindow, MainWindow):
     @asyncSlot()
     async def start_program(self):
         self.tasks = {}
-        self.msg = ['Login Progress']
         self.nova_notifier.db = self.db
-        self.nova_notifier.status_lbl = self.msg
         self.nova_notifier.tasks = self.tasks
-        self.tasks['retrieving'] = create_task(self.retrieving(self.msg))
+        self.tasks['retrieving'] = create_task(self.retrieving())
         self.tasks['start'] = create_task(self.start_routine())
 
     async def start_routine(self):
@@ -152,14 +161,14 @@ class MainWindow0(QMainWindow, MainWindow):
             self.pause_retrieve.set()
             self.nova_notifier.channel = self.channel
             await self.nova_notifier.start()
-            await self.show_usernames()
+            # await self.show_usernames()
             await self.add_items()
             self.pause_retrieve.clear()
             self.tasks['timer'] = create_task(self.timer())
             if self.nova_notifier.settings['browser'] != 'none':
-                for cookie, username in zip(self.nova_notifier.cookies, self.nova_notifier.usernames):
-                    self.tasks[f"sold{username}"] = create_task(self.nova_notifier.sold_notification(
-                                                                cookie, username, self.show_usernames, self.pause_event))
+                self.tasks["Sold Notification"] = create_task(self.nova_notifier.sold_notification(
+                                                              self.nova_notifier.username_cookie, self.show_usernames, 
+                                                              self.show_notification, self.pause_event))
             await self.nova_notifier.price_notification()
         except CancelledError:
             return
@@ -173,7 +182,7 @@ class MainWindow0(QMainWindow, MainWindow):
         try:
             if self.tasks['timer']._state == 'PENDING':
                 self.tasks['refresh'] = create_task(self.refresh_routine())
-        except AttributeError:
+        except:
             pass
 
     async def refresh_routine(self):
@@ -194,8 +203,11 @@ class MainWindow0(QMainWindow, MainWindow):
             return
 
     def stop_notifier(self):
-        for task in self.tasks.values():
-            task.cancel()
+        try:
+            for task in self.tasks.values():
+                task.cancel()
+        except:
+            pass
 
         self.pause_event.clear()
 
@@ -203,14 +215,16 @@ class MainWindow0(QMainWindow, MainWindow):
         self.lbl_refresh.setText("")
         self.lbl_acc.setText("")
 
+        temp = self.nova_notifier.settings
         self.nova_notifier = NovaNotifier()
+        self.nova_notifier.settings = temp
 
     @asyncSlot()
     async def add_popup(self):
         self.pause_event.clear()
 
         if not self.nova_notifier.items:
-            self.nova_notifier.read_id()
+            self.nova_notifier.read_item()
 
         self.popup_window = AddItem()
         self.popup_window.gui_init(self.nova_notifier.items, self.pause_event)
@@ -227,7 +241,11 @@ class MainWindow0(QMainWindow, MainWindow):
 
     async def timer(self):
         self.pause_event.set()
-        self.refresh_timer = self.nova_notifier.settings['timer_refresh']
+        if self.nova_notifier.settings['timer_refresh'] > 60:
+            self.refresh_timer = self.nova_notifier.settings['timer_refresh'] 
+        else:
+            self.nova_notifier.settings['timer_refresh'] = 60
+            self.refresh_timer = self.nova_notifier.settings['timer_refresh']
         while True:
             await self.pause_event.wait()
             if self.refresh_timer > 0:
@@ -245,28 +263,23 @@ class MainWindow0(QMainWindow, MainWindow):
         self.pause_event.set()
 
     async def show_usernames(self):
-        usr_txt = usr_txt2 = ''
-        for val in self.nova_notifier.usernames:
-            usr_txt += f"{val}\n"
-        for val2 in self.nova_notifier.usernames_error:
-            usr_txt2 += f"{val2}\n"
-        self.lbl_acc.setText(f"<font color=\"#2ED03C\">{usr_txt}</font> <font color=\"red\">{usr_txt2}</font>")
+        txt = ''
+        for username, zeny in self.nova_notifier.username_zeny.items():
+            txt += f"\n<font color=\"#ffc100\">{username}</font><br><font color=\"#2ED03C\">{zeny}</font><br><br>"
+        self.lbl_acc.setText(txt)
 
-    async def show_notification(self):
-        while True:
-            await self.notif_event.wait()
-            notif = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-            self.lbl_last_notif.setText(f'LAST NOTIFICATION: {notif}')
-            self.lbl_refresh.setStyleSheet(css.lbl())
-            self.notif_event.clear()
+    async def show_notification(self, item):
+        time = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        self.lbl_last_notif.setText(f"<font color=\"#2ED03C\">Last Sell: {time} - {item}")
+        #self.lbl_refresh.setStyleSheet(css.lbl())
 
-    async def retrieving(self, msg):
+    async def retrieving(self):
         i = 0
         dots = ['', '.', '..', '...']
 
         while True:
             await self.pause_retrieve.wait()
-            self.lbl_refresh.setText(f"{msg[0]}{dots[i]}")
+            self.lbl_refresh.setText(f"{self.nova_notifier.status_lbl}{dots[i]}")
             self.lbl_refresh.setStyleSheet(css.lbl_refresh())
             i += 1
             if i == 4:
@@ -275,48 +288,55 @@ class MainWindow0(QMainWindow, MainWindow):
 
     async def add_items(self):
         self.tbl.setRowCount(0)
-        for item, table_row in zip(self.nova_notifier.items.values(), self.nova_notifier.result):
+        for table_row in self.nova_notifier.result:
             row = self.tbl.rowCount()
             self.tbl.setRowCount(row + 1)
-            col = 0
-            for i, att in enumerate(table_row):
-                if i == 0:  # Insert image based on item ID
+            for col, att in enumerate(table_row):
+                if col == 0:  
+                    # Create Label Image 
                     lbl = QLabel()
-                    img = item['icon']
                     lbl.setAlignment(QtCore.Qt.AlignCenter)
-                    lbl.setPixmap(img)
-                    txt = QLabel(att)
+                    lbl.setPixmap(QPixmap(f"Icons/{table_row[0]}.png"))
+                    # Create ID text
+                    txt = QLabel(table_row[0]) # ID
                     txt.setStyleSheet("QLabel { color: #fff; }")
                     txt.setAlignment(QtCore.Qt.AlignCenter)
+                    # Add Everything to a layout
                     layout = QVBoxLayout()
                     layout.addWidget(lbl)
                     layout.addWidget(txt)
-                    cellWidget = QWidget()  # append widgets into one
+                    # Make the widget 
+                    cellWidget = QWidget()
                     cellWidget.setLayout(layout)
+                    self.tbl.setCellWidget(row, col, cellWidget)
                 cell = QTableWidgetItem(str(att))
                 cell.setFlags(QtCore.Qt.ItemIsEnabled)
                 cell.setTextAlignment(QtCore.Qt.AlignCenter)
-                if table_row[i] == '-':
+
+                if table_row[col] == '-':
                     cell.setForeground(self.font_color["gold"])
-                elif col == 0 or col == 4 or col == 12:
-                    if item['price'] and item['price'] <= item['alert']:
+
+                elif table_row[4] != '-' and col == 0 or col == 4 or col == 11:
+                    if table_row[12] in self.nova_notifier.notify: # Alert
                         cell.setForeground(self.font_color["alert"])
                         txt.setStyleSheet("QLabel { color: #2BD032; }")
+
+                elif col == 8:
+                    if "+" in table_row[8]:  # Short med
+                        cell.setForeground(self.font_color["no"])
+                    else:
+                        cell.setForeground(self.font_color["yes"])
+
                 elif col == 9:
-                    if "+" in table_row[9]:  # Short med
+                    if "+" in table_row[9]:  # Long med
                         cell.setForeground(self.font_color["no"])
                     else:
                         cell.setForeground(self.font_color["yes"])
-                elif col == 10:
-                    if "+" in table_row[10]:  # Long med
-                        cell.setForeground(self.font_color["no"])
-                    else:
-                        cell.setForeground(self.font_color["yes"])
-                if i == 0:
+
+                if not col:
                     self.tbl.setCellWidget(row, col, cellWidget)
-                elif i not in [0, 13]:
+                else:
                     self.tbl.setItem(row, col, cell)
-                col += 1
 
         msg = 'Do you want to remove this item from the list?'
         self.tbl.cellDoubleClicked.connect(lambda: self.delete_confirmation(msg))
