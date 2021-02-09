@@ -13,8 +13,7 @@ class MainWindow(object):
         tbl_data = ["TEST" for i in range(13)]
         tbl_data = []
         headers = ['ID', 'NAME', 'REFINE', 'PROP', 'PRICE', 'EA',
-                   'CHEAP', 'SHORT MED', 'LONG MED', 'SM%', 'LM%',
-                   'ALERT', 'LOCATION']
+                   'SHORT MED', 'LONG MED', 'SM%', 'LM%', 'ALERT', 'LOCATION']
         # time_last = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         # self.notification = ''
 
@@ -70,10 +69,11 @@ class MainWindow(object):
         self.btn_discord.setFixedWidth(25)
 
         self.lbl_refresh = QLabel(' ')
-        self.lbl_last_notif = QLabel('Host: Not Hosting')
+        self.lbl_last_notif = QLabel('Host: Not Hosting!')
         self.lbl_accounts = QLabel('ACCOUNTS: ')
         self.lbl_acc = QLabel(' ')
         self.lbl_acc.setAlignment(Qt.AlignCenter)
+        self.lbl_acc.setWordWrap(True)
         self.tbl = QTableWidget(len(tbl_data), len(headers))
         self.tbl.setVerticalScrollMode(QTreeView.ScrollPerPixel)
         self.tbl.setHorizontalHeaderLabels(headers)
