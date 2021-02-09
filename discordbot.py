@@ -1,11 +1,15 @@
 from datetime import datetime
-from discord import Embed, Client
+from discord import Embed, Client, Intents
 from secrets import token_hex
 from asyncio import create_task, sleep, run
 
-TOKEN = "Insert Here Your Bot Token"
+# could be hidden using environment variables
+TOKEN = 'Insert Here Your Discord Bot Token'
 
-client = Client()
+intents = Intents.default()
+intents.members = True
+
+client = Client(intents=intents)
 host_channel = None
 
 
@@ -90,6 +94,6 @@ async def on_message(message):
 
 if __name__ == '__main__':
     from motor.motor_asyncio import AsyncIOMotorClient
-    TKN_MONGOdb = 'Insert Here your MongoDB Token'
+    TKN_MONGOdb = 'Insert Here Your MongoDB Token'
     db = AsyncIOMotorClient(TKN_MONGOdb)
     run(NovaBot(db))
