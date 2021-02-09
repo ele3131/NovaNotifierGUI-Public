@@ -103,11 +103,9 @@ def tbl():
     padding:3px;
     min-width:6em;
     }
-
     QTableCornerButton::section{
     background-color: #fff;
     }
-
     QTableWidget::item{
     border-left:4px solid #161616;
     border-radius:2px;
@@ -124,15 +122,12 @@ under background-color if you want to remove the scrollbar
 
 def scrollbar():
     return """
-
     QScrollBar:vertical {
         background-color: #1E1E1E;
     }
-
     QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{
         background-color: #1E1E1E;
     }
-
     QScrollBar::handle:vertical{
         background-color: #141414;
     }
@@ -212,7 +207,6 @@ def header():
     QHeaderView{
     background-color:#141414;
     }
-
     QHeaderView::section{
     background-color:#141414;
     color:#E1AD27;
