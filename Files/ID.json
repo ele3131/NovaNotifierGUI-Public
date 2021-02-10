@@ -1,79 +1,13 @@
 {
-    "('52228', 0, 'Divine Power, Expert Archer 4, INT +5')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
+    "('32109', '0', 'None')": {
+        "id": "32109",
+        "name": "Event Ticket",
         "refine": 0,
-        "alert": 0,
-        "property": [
-            "Divine Power",
-            "Expert Archer 4",
-            "INT +5"
-        ],
-        "short_med": 0,
-        "long_med": 0
-    },
-    "('52228', 0, 'AGI +4, Divine Power, Fighting Spirit 7')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
-        "refine": 0,
-        "alert": 0,
-        "property": [
-            "AGI +4",
-            "Divine Power",
-            "Fighting Spirit 7"
-        ],
-        "short_med": 0,
-        "long_med": 0
-    },
-    "('52228', 0, 'Chaotic Killer Mantis Card, DEX +5, Sharp 4, Strong')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
-        "refine": 0,
-        "alert": 0,
-        "property": [
-            "Chaotic Killer Mantis Card",
-            "DEX +5",
-            "Sharp 4",
-            "Strong"
-        ],
-        "short_med": 82000000,
-        "long_med": 82000000
-    },
-    "('52228', 0, 'None')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
-        "refine": 0,
-        "alert": 0,
+        "alert": 150000,
         "property": [
             "None"
         ],
-        "short_med": 2680000,
-        "long_med": 2680000
-    },
-    "('52228', 0, 'Fatal Lv 2, Rigid, VIT +4')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
-        "refine": 0,
-        "alert": 8000000,
-        "property": [
-            "Fatal Lv 2",
-            "Rigid",
-            "VIT +4"
-        ],
-        "short_med": 8000000,
-        "long_med": 8000000
-    },
-    "('52228', 0, 'Hundred Luck, STR +3, Sharp 4')": {
-        "id": "52228",
-        "name": "King Schmidt\\'s Strong Insignia [1]",
-        "refine": 0,
-        "alert": 8000000,
-        "property": [
-            "Hundred Luck",
-            "STR +3",
-            "Sharp 4"
-        ],
-        "short_med": 0,
-        "long_med": 0
+        "short_med": 106000,
+        "long_med": 109000
     }
 }
