@@ -77,7 +77,7 @@ class NovaNotifier():
                 raise IndexError('NovaNotifier Cookie Expired!')
             return
 
-        from browsercookie3 import chrome, firefox
+        from browsercookie3 import chrome, firefox, opera, edge
         cjs = []
 
         if self.settings['browser'] == 'firefox':
@@ -85,7 +85,16 @@ class NovaNotifier():
                 cjs.append(firefox(domain_name='novaragnarok.com'))
             except BaseException:
                 raise NameError('Firefox Error!')
-
+        elif self.settings['browser'] == 'opera':
+            try:
+                cjs.append(opera(domain_name='novaragnarok.com'))
+            except BaseException:
+                raise NameError('Opera Error!')
+        elif self.settings['browser'] == 'edge':
+            try:
+                cjs.append(edge(domain_name='novaragnarok.com'))
+            except BaseException:
+                raise NameError('Opera Error!')
         else:
             profile = 'Default'
             for i in range(10):
@@ -111,8 +120,11 @@ class NovaNotifier():
         for i, item in enumerate(login):
             try:
                 username = item.split("</strong>", 1)[0].rsplit(">", 1)[1]
-                if '\\n' not in username and username not in self.username_cookie:
+                if username != '\n' and username not in self.username_cookie:
                     self.username_cookie[username] = cookie[i]
+                    if username == 'Nova_Notifier':
+                        await self.db.nova.notifier.update_one({'name': 'cookie'}, {'$set': {'fluxSessionData': cookie[i]['fluxSessionData']}})
+
             except:
                 pass
 
@@ -487,10 +499,10 @@ class NovaNotifier():
 
     def format(self, items):
         for key, item in items.items():
-            location, format_refine = self.price_search(item, key)
+            location, format_refine, format_prop = self.price_search(item, key)
 
             item['format_refine'] = format_refine
-            item['format_property'] = ', '.join(item['property'])
+            item['format_property'] = ', '.join(format_prop)
             if location is not None:
                 item['format_price'] = format(item['price'], ',d') + 'z'
                 item['format_short_med'] = format(item['short_med'], ',d') + 'z'
@@ -514,14 +526,16 @@ class NovaNotifier():
                 'cheapest_location': None, 'cheapest_price': 1000000000, 'alert': item['alert']}
         minor_refine = item['refine']
         format_refine = f"+{item['refine']}"
+        format_prop = item['property']
 
         for each in self.market_data[item['id']]:
             if 'refine' in each['orders']: 
                 refine = each['orders']['refine']
                 if refine >= item['refine']:
-                    if self.property_check(each, item['property']):
+                    if prop := self.property_check(each, item['property']):
                         self.lowest_price(each, info, key)
                         minor_refine = refine
+                        format_prop = prop
 
             else:  # Not Refinable
                 if self.property_check(each, item['property']):
@@ -535,7 +549,7 @@ class NovaNotifier():
         item['price'] = info['cheapest_price']
         item['ea'] = f'{info["cheapest_total"]}/{info["cheap_total"]}'
 
-        return info['cheapest_location'], format_refine
+        return info['cheapest_location'], format_refine, format_prop
 
     def lowest_price(self, item, info, item_key):
         if 'qty' in item['orders']:
@@ -557,34 +571,63 @@ class NovaNotifier():
         if info['cheapest_price'] < info['alert'] and item_key not in self.notify:
             self.notify[item_key] = True
 
-    def property_check(self, web_prop, item_prop):
+    def property_check(self, web_prop, prop):
         """ Input: Properties from Website, Your Item Properties """
 
+        item_prop = list(prop)
         # No Property Column
         if 'property' not in web_prop['orders']:
             if 'None' in item_prop:
-                return 1
+                return prop
             else:
                 return 0
 
         elif 'property' in web_prop['orders'] and not web_prop['orders']['property']:
             if 'None' in item_prop:
-                return 1
+                return prop
             else:
                 return 0
 
         # Property Column
         else:
+            try: 
+                end = web_prop['items']['property'].split("</a>, ")[-1].split('<')[0].split('. ')
+            except:
+                pass
+
             web_result = []
             first_split = web_prop['items']['property'].split("'>")[1:]
             for each in first_split:
-                web_result.append(each.split('</a>')[0]) 
+                web_result.append(each.split('</a>')[0])
 
-            if sorted(web_result) == item_prop:
-                return 1
-            else:
+            if not web_result:
+                web_result = web_prop['items']['property'].split("> ")[1].split('<')[0].split('. ')
+                web_result[-1] = web_result[-1].rstrip('.')
+            elif end[0]:
+                end[-1] = end[-1].rstrip('.')
+                web_result.extend(end)
+
+            # Comparison between item from website and requested property
+            extra = False
+            for item in item_prop:
+                if item.upper() == 'ANY':
+                    extra = True
+                    continue
+                else:
+                    if item in web_result:
+                        web_result.remove(item)
+                        continue
+                    else:
+                        return 0
+
+            if web_result and not extra:
                 return 0
 
+            if web_result:
+                return item_prop + web_result
+
+            return item_prop
+            
     def percentage(self, item):
         if item['long_med']:
             if item['long_med'] > item['price']:
