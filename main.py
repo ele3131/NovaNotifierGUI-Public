@@ -1,12 +1,12 @@
 import css
 from sys import argv
 from asyncio import sleep, create_task, set_event_loop, Event, \
-                    CancelledError
+                    CancelledError                 
 from asyncqt import QEventLoop, asyncSlot
+from PyQt5 import QtCore  
 from PyQt5.QtWidgets import QMainWindow, QWidget, QTableWidgetItem, \
                             QLabel, QVBoxLayout, QApplication
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5 import QtCore
 from motor.motor_asyncio import AsyncIOMotorClient
 from additem import AddItem
 from gui import MainWindow
@@ -23,7 +23,7 @@ TKN_MONGOdb = 'Insert Here Your MongoDB Token'
 class MainWindow0(QMainWindow, MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        
         # Discord bot & Mongodb
         self.db = AsyncIOMotorClient(TKN_MONGOdb)
         self.nova_notifier = NovaNotifier()
@@ -94,6 +94,12 @@ class MainWindow0(QMainWindow, MainWindow):
             self.nova_notifier.settings['browser'] = 'firefox'
         elif self.popup_settings.rbtn_chrome.isChecked():
             self.nova_notifier.settings['browser'] = 'chrome'
+        elif self.popup_settings.rbtn_chromium.isChecked():
+            self.nova_notifier.settings['browser'] = 'chromium'
+        elif self.popup_settings.rbtn_opera.isChecked():
+            self.nova_notifier.settings['browser'] = 'opera'     
+        elif self.popup_settings.rbtn_edge.isChecked():
+            self.nova_notifier.settings['browser'] = 'edge'     
         else:
             self.nova_notifier.settings['browser'] = 'none'
 
@@ -237,7 +243,7 @@ class MainWindow0(QMainWindow, MainWindow):
         self.new_popup.btn_close.clicked.connect(self.new_popup.close)
 
     def popup_help(self):
-        self.popup_help = Popuphelp()
+        self.help = Popuphelp()
 
     async def timer(self):
         self.pause_event.set()
@@ -338,23 +344,22 @@ class MainWindow0(QMainWindow, MainWindow):
                 else:
                     self.tbl.setItem(row, col, cell)
 
-        msg = 'Do you want to remove this item from the list?'
-        self.tbl.cellDoubleClicked.connect(lambda: self.delete_confirmation(msg))
+        #msg = 'Do you want to remove this item from the list?'
+        #self.tbl.cellDoubleClicked.connect(lambda: self.delete_confirmation(msg))
 
-    @asyncSlot()
-    async def delete_confirmation(self, msg):
-        self.popup_confirm = Popupdelete(msg)
-        self.popup_confirm.btn_yes.clicked.connect(self.delete_item)
-        self.popup_confirm.btn_yes.clicked.connect(self.popup_confirm.close)
-        self.popup_confirm.btn_no.clicked.connect(self.popup_confirm.close)
+    #@asyncSlot()
+    #async def delete_confirmation(self, msg):
+    #    self.popup_confirm = Popupdelete(msg)
+    #    self.popup_confirm.btn_yes.clicked.connect(self.delete_item)
+    #    self.popup_confirm.btn_yes.clicked.connect(self.popup_confirm.close)
+    #    self.popup_confirm.btn_no.clicked.connect(self.popup_confirm.close)
 
-    @asyncSlot()
-    async def delete_item(self):
-        current_cell = self.tbl.currentRow()
-        del self.nova_notifier.items[current_cell]
-        del self.nova_notifier.result[current_cell]
-        AddItem().save_data(self.nova_notifier.items)
-        await self.add_items()
+    #@asyncSlot()
+    #async def delete_item(self):
+    #    current_cell = self.tbl.currentRow()
+    #    del self.nova_notifier.result[current_cell]
+    #     AddItem().save_data(self.nova_notifier.items)
+    #    await self.add_items()
 
 
 def windowLauncher():
