@@ -1,6 +1,6 @@
 import css
 from PyQt5.QtWidgets import QLabel, QWidget, QVBoxLayout, QPushButton, \
-                            QLineEdit, QHBoxLayout, QRadioButton, QFormLayout
+                              QLineEdit, QHBoxLayout, QRadioButton, QFormLayout
 from PyQt5.QtGui import QIcon, QIntValidator
 from PyQt5 import QtCore
 
@@ -167,25 +167,37 @@ class PopupSettings(QWidget):
         self.line_time_interval.setPlaceholderText(f"Current refresh interval: {config['timer_refresh']} seconds")
         self.lbl_short_median = QLabel("Short Median: ")
         self.lbl_long_median = QLabel("Long Median: ")
-        self.lbl_median_filter = QLabel("Median Filter: ")
         self.lbl_sell_filter = QLabel("Sell Filter: ")
         self.lbl_time_interval = QLabel("Refresh Time (seconds): ")
 
         self.lines = [self.line_short_median, self.line_long_median, self.line_median_filter, self.line_sell_filter, self.line_time_interval]
-        self.labels = [self.lbl_short_median, self.lbl_long_median, self.lbl_median_filter, self.lbl_sell_filter, self.lbl_time_interval]
+        self.labels = [self.lbl_short_median, self.lbl_long_median, self.lbl_sell_filter, self.lbl_time_interval]
 
         self.rbtn_chrome = QRadioButton("Chrome", self)
+        self.rbtn_chromium = QRadioButton("Chromium", self)
+        self.rbtn_opera = QRadioButton("Opera Stable", self)
+        self.rbtn_edge = QRadioButton("New Edge", self)
         self.rbtn_firefox = QRadioButton("Firefox", self)
         self.rbtn_none = QRadioButton("None", self)
         self.lbl_browser_cookie = QLabel("Browser Cookie: ")
+
         if config['browser'] == 'firefox':
             self.rbtn_firefox.setChecked(True)
         elif config['browser'] == 'chrome':
             self.rbtn_chrome.setChecked(True)
+        elif config['browser'] == 'chromium':
+            self.rbtn_chromium.setChecked(True)
+        elif config['browser'] == 'opera':
+            self.rbtn_opera.setChecked(True)
+        elif config['browser'] == 'edge':
+            self.rbtn_edge.setChecked(True)
         else:
             self.rbtn_none.setChecked(True)
 
         self.rbtn_chrome.setStyleSheet(css.rbtn())
+        self.rbtn_chromium.setStyleSheet(css.rbtn())
+        self.rbtn_opera.setStyleSheet(css.rbtn())
+        self.rbtn_edge.setStyleSheet(css.rbtn())
         self.rbtn_firefox.setStyleSheet(css.rbtn())
         self.rbtn_none.setStyleSheet(css.rbtn())
         self.lbl_browser_cookie.setStyleSheet(css.lbl())
@@ -202,6 +214,9 @@ class PopupSettings(QWidget):
 
         self.lyt_rbtn = QHBoxLayout()
         self.lyt_rbtn.addWidget(self.rbtn_chrome)
+        self.lyt_rbtn.addWidget(self.rbtn_chromium)
+        self.lyt_rbtn.addWidget(self.rbtn_opera)
+        self.lyt_rbtn.addWidget(self.rbtn_edge)
         self.lyt_rbtn.addWidget(self.rbtn_firefox)
         self.lyt_rbtn.addWidget(self.rbtn_none)
         self.lyt_inputs.addRow(self.lbl_browser_cookie, self.lyt_rbtn)
