@@ -9,7 +9,29 @@ def gui_background():
 def window():
     return """
     QApplication{
-    background-color: #000000;
+        background-color: #000000;
+    }
+    """
+
+
+def btn():
+    return """
+    QPushButton{
+    background-color: transparent;
+    border-style:solid;
+    border-radius:5px;
+    border-color:#FFD500;
+    border-width:2px;
+    color: #FFD500;
+    font:12px;
+    font-weight:bold;
+    padding:6px;
+    min-width:6em;
+    }
+
+    QPushButton::hover{
+        color:black;
+        background:#FFD500;
     }
     """
 
@@ -17,49 +39,59 @@ def window():
 def btn_start():
     return """
     QPushButton{
-    background-color: #141414;
+    qproperty-icon: url(Files/Icons/App/play.svg);
+    background-color: transparent;
     border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    border-color:#F09E20;
-    color:#E1AD27;
-    font:11px;
-    padding:3px;
+    border-radius:5px;
+    font:12px;
+    font-weight:bold;
+    padding:6px;
     min-width:6em;
     }
-    
-    QPushButton::hover{
-    background-color: #343436;
-    }
-    
-    QPushButton::pressed{
-    background-color: #1A1A20;
-    }
-    
     """
 
 
-def btn():
+def btn_stop():
     return """
     QPushButton{
-    background-color: #E1AD27;
+    qproperty-icon: url(Files/Icons/App/stop.svg);
+    background-color: transparent;
     border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    border-color:#F09E20;
-    color:#000000;
-    font:11px;
+    border-radius:5px;
+    font:12px;
     font-weight:bold;
-    padding:3px;
+    padding:6px;
     min-width:6em;
     }
-    
-    QPushButton::hover{
-    background-color: #FFD500;
+    """
+
+
+def btn_pause():
+    return """
+    QPushButton{
+    qproperty-icon: url(Files/Icons/App/pause.svg);
+    background-color: transparent;
+    border-style:outset;
+    border-radius:5px;
+    font:12px;
+    font-weight:bold;
+    padding:6px;
+    min-width:6em;
     }
-    
-    QPushButton::pressed{
-    background-color: #F09E20;
+    """
+
+
+def btn_refresh():
+    return """
+    QPushButton{
+    qproperty-icon: url(Files/Icons/App/refresh.svg);
+    background-color: transparent;
+    border-style:outset;
+    border-radius:5px;
+    font:12px;
+    font-weight:bold;
+    padding:6px;
+    min-width:6em;
     }
     """
 
@@ -67,111 +99,162 @@ def btn():
 def btn_opt():
     return """
     QPushButton{
-    background-color: #E1AD27;
+    qproperty-icon: url(Files/Icons/App/settings.svg);
+    background-color: transparent;
     border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    border-color:#F09E20;
-    width: 10px;
-    color:#000000;
-    font:11px;
+    border-radius:5px;
+    font:12px;
     font-weight:bold;
-    padding:3px;
+    padding:6px;
     min-width:6em;
     }
-    
-    QPushButton::hover{
-    background-color: #FFD500;
-    }
-    
-    QPushButton::pressed{
-    background-color: #F09E20;
+    """
+
+
+def btn_add():
+    return """
+    QPushButton{
+    qproperty-icon:url(Files/Icons/App/add-file.svg);
+    background-color:transparent;
+    border-style:outset;
+    border-radius:5px;
+    font:12px;
+    font-weight:bold;
+    padding:6px;
+    min-width:6em;
     }
     """
+
+
+def btn_discord():
+    return """
+        QPushButton{
+        qproperty-icon:url(Files/Icons/App/discord.svg);
+        background-color:transparent;
+        border-style:outset;
+        border-radius:5px;
+        font:12px;
+        font-weight:bold;
+        padding:6px;
+        min-width:6em;
+        }
+        """
+
+
+def btn_help():
+    return """
+        QPushButton{
+        qproperty-icon:url(Files/Icons/App/info.svg);
+        background-color:transparent;
+        border-style:outset;
+        border-radius:5px;
+        font:12px;
+        font-weight:bold;
+        padding:6px;
+        min-width:6em;
+        }
+        """
+
+
+def btn_accounts():
+    return """
+        QPushButton{
+        qproperty-icon:url(Files/Icons/App/people.svg);
+        background-color:transparent;
+        border-style:outset;
+        border-radius:5px;
+        font:12px;
+        font-weight:bold;
+        padding:6px;
+        min-width:6em;
+        }
+        """
 
 
 def tbl():
     return """
     QTableView{
-    background-color: #1E1E1E;
-    border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    border-color:#F09E20;
-    color:#E0DEDE;
-    font:11px;
-    padding:3px;
-    min-width:6em;
+    background-color:#141414;
+    border-top-style:solid;
+    border-bottom-style:solid;
+    border-width:3px;
+    border-radius:0px;
+    border-color:#FFD500;
+    color:#d9d9d9;
+    font:10px;
+    font-weight:bold;
+    padding:0px;
+    margin-bottom:0px;
+    min-height:0px;
     }
-    QTableCornerButton::section{
-    background-color: #fff;
-    }
-    QTableWidget::item{
-    border-left:4px solid #161616;
-    border-radius:2px;
+    QTableView::item{
+        selection-background-color:#ffd500;
     }
     """
 
 
-"""
-add
-margin: 0px 20px 0px 20px;
-under background-color if you want to remove the scrollbar
-"""
-
-
 def scrollbar():
     return """
-    QScrollBar:vertical {
-        background-color: #1E1E1E;
-    }
-    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{
-        background-color: #1E1E1E;
-    }
-    QScrollBar::handle:vertical{
-        background-color: #141414;
-    }
+        QScrollBar:vertical{
+            background-color: #141414;
+            width: 14px
+        }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical{
+            background-color: #141414;
+        }
+        QScrollBar::handle:vertical{
+            background-color: #FFD500;
+            border-radius: 6px;
+            margin-top: 1px;
+            margin-bottom: 1px;
+        }
+        QScrollBar::add-line:vertical {
+            height: 0px;
+        }
+        QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+
+        QScrollBar:horizontal{
+            background-color: #141414;
+        }
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal{
+            background-color: #141414;
+        }
+        QScrollBar::handle:horizontal{
+            background-color: #FFD500;
+            border-radius: 2px;
+            margin-left: 1px;
+            margin-right: 1px;
+        }
+        QScrollBar::add-line:horizontal{
+            height: 0px;
+        }
+        QScrollBar::sub-line:horizontal{
+            height: 0px;
+        }
     """
 
 
 def lbl():
     return """
         QLabel{
-        font:11px;
-        color:#E1AD27;
+        font:12px;
+        color:white;
         border-width:0px;
         border-radius:0px;
+        font-weight:bold;
+        margin-top:10px;
+        margin-bottom:10px;
         }
         """
-
-
-def lbl_white():
-    return """
-        QLabel{
-        font:11px;
-        color:#EBFFFF;
-        border-width:0px;
-        border-radius:0px;
-        }
-        """
-
-
-def lbl_title():
-    return """
-    QLabel{
-    font:16px;
-    color:#E1AD27;
-    border-width:0px;
-    border-radius:0px;
-    }
-    """
 
 
 def lbl_acc():
     return """
     QLabel{
-    font:11px;
-    color:#2ED03C;
+    font:12px;
+    color:#e32037;
     border-width:0px;
     border-radius:0px;
     }
@@ -181,40 +264,22 @@ def lbl_acc():
 def lbl_refresh():
     return """
     QLabel{
-    font:11px;
-    color:#29D03C;
+    font:12px;
+    font-weight:bold;
+    color:#2ED03C;
     border-width:0px;
     border-radius:0px;
     }
     """
 
 
-def notif():
-    return """
-    background-color:#141414;
-    font:11px;
-    color:#E1AD27;
-    border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    padding:3px;
-    border-color:#F09E20;
-    """
-
-
 def header():
     return """
-    QHeaderView{
-    background-color:#141414;
-    }
     QHeaderView::section{
-    background-color:#141414;
-    color:#E1AD27;
-    font:11px;
-    }
-    
-    QHeaderView{
-    background-color:#141414;
+        background-color:#141414;
+        color:#FFD500;
+        font:10px;
+        font-weight:bold;
     }
     """
 
@@ -222,17 +287,11 @@ def header():
 def container():
     return """
     background-color:#141414;
-    border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    border-color:#F09E20;
+    border-right-style:none;
+    border-width:3px;
+    border-radius:4px;
+    border-color:#FFD500;
     """
-
-
-"""
-    Add Item Popup
-"""
-
 
 
 def popup():
@@ -246,45 +305,20 @@ def popup():
 def line_edit():
     return """
     QLineEdit{
-    background-color: #1E1E1E;
-    color: #E1AD21;
-    border-style:outset;
-    border-width:2px;
-    border-radius:10px;
-    padding:3px;
-    border-color:#F09E20;
-    }
-    """
-
-
-def lbl_popup():
-    return """
-    QLabel{
-    font:11px;
-    color:#E1AD27;
-    border-width:0px;
-    border-radius:0px;
-    }
-    """
-
-
-def del_btn():
-    return """
-    QPushButton{
     background-color: #141414;
-    color: #E0DEDE;
-    font:11px;
-    font-weight:bold;
-    padding:3px;
-    min-width:6em;
+    color:#d9d9d9;
+    border-bottom-style:outset;
+    border-width:2px;
+    border-radius:0px;
+    padding:4px;
+    border-color:#FFD500;
     }
-    
-    QPushButton::hover{
-    background-color: #1E1E1E;
-    }
-    
-    QPushButton::pressed{
-    background-color: #161616;
+
+    QToolTip{
+    background-color: #141414;
+    color: white;
+    border: 2px;
+    border-color:#ffd500;
     }
     """
 
@@ -293,18 +327,59 @@ def rbtn():
     return """
     QRadioButton{
     background-color: #141414;
-    color: #E1AD27;
+    color: #d9d9d9;
+    font-weight:bold;
+    padding:4px;
     }
-    
+
     QRadioButton::indicator::unchecked{
-    border: 1px solid #E1AD27;
-    background-color: #1E1E1E;
+    border: 1px solid #FFD500;
+    background-color: #141414;
+    border-radius: 2px;
     }
-    
+
     QRadioButton::indicator::checked{
-    border: 1px solid #E1AD27;
-    background-color: #F09E20;
+    border: 1px solid #FFD500;
+    background-color: #FFD500;
+    border-radius: 2px;
     }
     """
 
-# #2D2D2D #161616
+
+def checkbox():
+    return """
+    QCheckBox{
+    background-color: #141414;
+    color: #d9d9d9;
+    font-weight:bold;
+    padding:4px;
+    }
+
+    QCheckBox::indicator::unchecked{
+    border: 1px solid #FFD500;
+    background-color: #141414;
+    border-radius: 2px;
+    }
+
+    QCheckBox::indicator::checked{
+    border: 1px solid #FFD500;
+    background-color: #FFD500;
+    border-radius: 2px;
+    }
+    """
+
+
+def menu():
+    return """
+    QMenu {
+    background-color: #141414;
+    }
+
+    QMenu::item{
+        color: white;
+    }
+
+    QMenu::item:selected{
+        color: #ffd500;
+    }
+    """
