@@ -1,9 +1,12 @@
 {
     "SM": 15,
     "LM": 30,
-    "median_filter": 0,
-    "timer_refresh": 180,
+    "timer_refresh": 60,
     "sell_filter": 0,
-    "token": null,
-    "browser": "none"
+    "token": "",
+    "browser": "none",
+    "system_notification": true,
+    "discord_notification": true,
+    "sell_notification": true,
+    "price_notification": true
 }
