@@ -1,15 +1,16 @@
 from sys import platform
-from asyncio import gather, sleep, create_task, BoundedSemaphore, TimeoutError
-from datetime import datetime
+from asyncio import gather, sleep, BoundedSemaphore
+from qasync import asyncSlot
+from datetime import datetime, timedelta
 from statistics import median
 from os import path
 from aiohttp import ClientSession
 from json import load, dump, JSONDecodeError
 import pytz
 
-
 if platform == "win32":
     from win10toast_persist import ToastNotifier
+
 
 class Optional():
     async def set_date(self):
@@ -20,23 +21,27 @@ class Optional():
 
 class NovaNotifier():
 
-    def __init__(self):
+    def __init__(self, main):
+        self.main = main
+        self.progress = ''
         self.notify = {}
         self.network_count = 1
         self.settings = {}
-        self.status_lbl = None
-        self.db = None
-        self.channel = None
         self.sema = None
         self.items = {}
         self.result = []
         self.market_data = {}
         self.history_data = {}
         self.icons_response = {}
-        self.names_id = {}
+        self.names = {}
+        self.accounts = {}
+        self.usernames = []
+        self.cookies = []
         self.icons = {}
-        self.username_cookie = {}
-        self.username_zeny = {}
+        self.sell_htmls = []
+        self.account_htmls = []
+        self.get_history = True
+        self.icon_path = 'Files/Icons/App/main2.ico'
 
     async def start(self):
         self.sema = BoundedSemaphore(3)
@@ -47,37 +52,42 @@ class NovaNotifier():
         if not self.items:
             self.read_item()
 
-        await self.network_items(self.items, list(self.username_cookie.values())[0])
+        self.get_history = True
+        await self.network_items(self.items, self.cookies[0])
 
         self.set_icons()
+        self.set_names()
         self.medians_history(self.items)
-        self.format(self.items)
+        self.formatting(self.items)
         self.make_table(self.items)
         self.save_data(self.items)
+        await self.notification()
+        await self.account_data()
 
     async def refresh(self):
-        await self.network_items(self.items, list(self.username_cookie.values())[0])
-        self.set_icons()
-        self.medians_history(self.items)
-        self.format(self.items)
+        self.get_history = False
+        await self.network_items(self.items, self.cookies[0])
+        self.formatting(self.items)
         self.make_table(self.items)
-        self.save_data(self.items)
+        await self.notification()
 
     async def login(self):
         """ set usernames and cookies """
 
-        self.status_lbl = 'Login in Progress'
+        self.main.lbl_refresh.setText('Login in Progress')
         if self.settings['browser'] == 'none':
-            cookie_val = (await self.db.nova.notifier.find_one({'name': 'cookie'}))['fluxSessionData']
+            cookie_val = (await self.main.db.nova.notifier.find_one({'name': 'cookie'}))['fluxSessionData']
             cookie = {"fluxSessionData": cookie_val}
             html = await self.network_session('https://novaragnarok.com', cookie)
             if html.find("Welcome!") != -1:
-                self.username_cookie['NovaNotifier'] = cookie
+                self.usernames.append("NovaNotifier")
+                self.cookies.append(cookie)
+                self.accounts["NovaNotifier"] = cookie
             else:
                 raise IndexError('NovaNotifier Cookie Expired!')
             return
 
-        from browsercookie3 import chrome, firefox, opera, edge
+        from browsercookie3 import chromium, chrome, firefox, opera, edge
         cjs = []
 
         if self.settings['browser'] == 'firefox':
@@ -95,55 +105,62 @@ class NovaNotifier():
                 cjs.append(edge(domain_name='novaragnarok.com'))
             except BaseException:
                 raise NameError('Opera Error!')
+        elif self.settings['browser'] == 'chromium':
+            try:
+                cjs.append(chromium(domain_name='novaragnarok.com'))
+            except BaseException:
+                raise NameError('Chromium Error!')
         else:
             profile = 'Default'
             for i in range(10):
                 try:
                     cjs.append(chrome(domain_name='novaragnarok.com', profile=profile))
-                except:
+                except Exception:
                     pass
                 profile = f'Profile {i}'
 
         if not cjs:
             raise NameError('Cookies Not Found!')
 
-        cookie = []
+        cookies = []
         for item in cjs:
             try:
-                cookie.append({"fluxSessionData": item._cookies['www.novaragnarok.com']['/']['fluxSessionData'].value})
+                cookies.append({"fluxSessionData": item._cookies['www.novaragnarok.com']['/']['fluxSessionData'].value})
             except KeyError:
                 pass
 
         site = 'https://www.novaragnarok.com/?module=account&action=view'
-        login = (await gather(*[self.network_session(site, each) for each in cookie]))
+        login = (await gather(*[self.network_session(site, each) for each in cookies]))
 
+        usernames = []
         for i, item in enumerate(login):
-            try:
-                username = item.split("</strong>", 1)[0].rsplit(">", 1)[1]
-                if username != '\n' and username not in self.username_cookie:
-                    self.username_cookie[username] = cookie[i]
-                    if username == 'Nova_Notifier':
-                        await self.db.nova.notifier.update_one({'name': 'cookie'}, {'$set': {'fluxSessionData': cookie[i]['fluxSessionData']}})
+            username = item.split("</strong>", 1)[0].rsplit(">", 1)[1]
+            if username != '\n' and username not in usernames:
+                self.usernames.append(username)
+                self.cookies.append(cookies[i])
+                self.accounts[username] = {'cookie': cookies[i]}
+                if username == 'Nova_Notifier':
+                    await self.main.db.nova.notifier.update_one({'name': 'cookie'}, {'$set': {'fluxSessionData': cookies[i]['fluxSessionData']}})
 
-            except:
-                pass
-
-        if not self.username_cookie:
+        if not self.accounts:
             raise NameError('Cookies Invalid!')
 
     def read_item(self):
-        with open('Files/ID.json', 'r') as f:
-            try:
+        try:
+            with open('Files/ID.json', 'r') as f:
                 self.items = load(f)
-            except JSONDecodeError:
-                pass
+
+            with open('Files/Names.json', 'r') as f:
+                self.names = load(f)
+        except JSONDecodeError:
+            pass
 
         for item in self.items.values():
-            if path.exists(f"Icons/{item['id']}.png"):
+            if path.exists(f"Files/Icons/Item/{item['id']}.png"):
                 self.icons[item['id']] = True
 
     def read_settings(self):
-        """ dict: SM, LM, median_filter, timer_refresh, sell_filter, token and browser"""
+        """ dict: SM, LM, timer_refresh, sell_filter, token and browser"""
 
         with open('Files/Settings.json', 'r') as f:
             self.settings = load(f)
@@ -151,12 +168,6 @@ class NovaNotifier():
     def write_settings(self):
         with open('Files/Settings.json', 'w') as f:
             dump(self.settings, f, indent=4)
-
-    def filter_medians(self, items):
-        # for key, value in items.items():
-        #    if self.items['long_med'] < self.settings['median_filter']:
-        #        del self.items[key]
-        pass
 
     async def network_session(self, url, cookie):
         async with ClientSession(cookies=cookie) as session:
@@ -174,16 +185,16 @@ class NovaNotifier():
                         else:
                             fail += 1
                             await sleep(3)
-                except TimeoutError:
+                except Exception:
                     await sleep(3)
                     fail += 1
         raise NameError('Retrieving Page Failed 3 Times')
 
     async def network_market_request(self, item, session):
-        url = f"https://www.novaragnarok.com/data/cache/ajax/item_{item['id']}.json"
-        fail = 0
         if item['id'] not in self.market_data:
+            url = f"https://www.novaragnarok.com/data/cache/ajax/item_{item['id']}.json"
             self.market_data[item['id']] = True
+            fail = 0
             while fail < 3:
                 try:
                     async with self.sema:
@@ -195,13 +206,13 @@ class NovaNotifier():
                             else:
                                 fail += 1
                                 await sleep(3)
-                except TimeoutError:
+                except Exception:
                     await sleep(3)
                     fail += 1
             raise NameError('Retrieving Market Failed 3 Times')
 
     async def network_history_request(self, item, session):
-        if item['long_med'] is None and item['id'] not in self.history_data:
+        if self.get_history and item['id'] not in self.history_data:
             self.history_data[item['id']] = True
             url = f"https://www.novaragnarok.com/data/cache/ajax/history_{item['id']}.json"
             fail = 0
@@ -215,7 +226,7 @@ class NovaNotifier():
                             else:
                                 fail += 1
                                 await sleep(3)
-                    except TimeoutError:
+                    except Exception:
                         await sleep(3)
                         fail += 1
             raise NameError('Retrieving History Failed 3 Times')
@@ -236,14 +247,13 @@ class NovaNotifier():
                                 else:
                                     fail += 1
                                     await sleep(3)
-                        except TimeoutError:
+                        except Exception:
                             await sleep(3)
                             fail += 1
                 raise NameError('Retrieving Icon Failed 3 Times')
 
     async def network_name_request(self, item, session):
-        if item['name'] == "Unknown" and item['id'] not in self.names_id:
-            self.names_id[item['id']] = True
+        if item['id'] not in self.names:
             url = f"https://www.novaragnarok.com/?module=vending&action=item&id={item['id']}"
             fail = 0
             while fail < 3:
@@ -251,22 +261,24 @@ class NovaNotifier():
                     try:
                         async with session.get(url, timeout=5) as response:
                             if response.status == 200:
-                                self.names_id[item['id']] = await response.text()
-                                item['name'] = self.names_id[item['id']].split('NovaRO: ', 1)[1].split('<', 1)[0]
+                                item['name'] = (await response.text()).split('<title>', 1)[1].split(' -', 1)[0]
+                                self.names[item['id']] = item['name']
                                 return
                             else:
                                 fail += 1
                                 await sleep(3)
-                    except TimeoutError:
+                    except Exception:
                         await sleep(3)
                         fail += 1
             raise NameError('Retrieving Name Failed 3 Times')
+        else:
+            item['name'] = self.names[item['id']]
 
     async def network_items(self, items, cookie):
         self.market_data, self.icons_response = {}, {}
         self.network_count = 1
 
-        # Start All Network Search 
+        # Start All Network Search
         async with ClientSession() as session:
             await gather(*[self.network_market_request(item, session) for item in items.values()])
 
@@ -280,23 +292,28 @@ class NovaNotifier():
             await gather(*[self.network_name_request(item, session) for item in items.values()])
 
     def retrieving(self):
-        # Show and Increase Retrieve Label
-        self.status_lbl = (f"Retrieving: {self.network_count}")
+        self.main.lbl_refresh.setText(f"Retrieving: {self.network_count}")
         self.network_count += 1
 
     def set_icons(self):
         for key in self.icons_response:
-            with open(f"Icons/{key}.png", 'wb+') as f:
+            with open(f"Files/Icons/Item/{key}.png", 'wb+') as f:
                 f.write(self.icons_response[key])
+
+    def set_names(self):
+        with open('Files/Names.json', 'w') as f:
+            dump(self.names, f, indent=4)
 
     def medians_history(self, items):
         today = datetime.now(pytz.timezone('US/Pacific')).replace(minute=0, second=0, microsecond=0)
         interval = [self.settings['SM'], self.settings['LM']]
         for item in items.values():
-            if item['long_med'] is None:
-                med, long_med = [], []
-                history = self.history_data[item['id']]
+            med, long_med = [], []
+            if 'Any' in item['property'] or "any" in item['property']:
+                pass
 
+            else:
+                history = self.history_data[item['id']]
                 for each in history:
                     if 'refine' in each['orders']:
                         item_refine = each['orders']['refine']
@@ -308,19 +325,17 @@ class NovaNotifier():
                                     long_med.append(each['orders']['price'])
                                     if call[1] is True:
                                         med.append(each['orders']['price'])
-                    
+
                     else:
                         if self.property_check(each, item['property']):
-                                date = each['items']['date'].split(' ', 1)[0].split("/")
-                                call = self.date(date, interval, today)
-                                if call[0] is True:
-                                    long_med.append(each['orders']['price'])
-                                    if call[1] is True:
-                                        med.append(each['orders']['price'])
-                                else:
-                                    break
-            else:
-                continue
+                            date = each['items']['date'].split(' ', 1)[0].split("/")
+                            call = self.date(date, interval, today)
+                            if call[0] is True:
+                                long_med.append(each['orders']['price'])
+                                if call[1] is True:
+                                    med.append(each['orders']['price'])
+                            else:
+                                break
 
             if med and long_med:
                 item['short_med'], item['long_med'] = round(median(med)), round(median(long_med))
@@ -331,46 +346,47 @@ class NovaNotifier():
             elif not med and not long_med:
                 item['short_med'], item['long_med'] = 0, 0
 
-    def medians_reset(self):
-        with open('Files/ID.json', 'r') as f:
-            try:
-                items = load(f)
-                for item in items.values():
-                    item['short_med'] = None
-                    item['long_med'] = None
-            except JSONDecodeError:
-                return
+    @asyncSlot()
+    async def account_data(self):
+        try:
+            url = 'https://www.novaragnarok.com/?module=account&action=view'
+            if self.settings['browser'] != 'none' and self.cookies:
+                self.account_htmls = (await gather(*[self.network_session(url, each) for each in self.cookies]))
+                await self.account_zeny()
+        except Exception:
+            self.main.exception()
 
-        with open('Files/ID.json', 'w+') as f:
-            dump(items, f, indent=4)
+    async def account_zeny(self):
+        for i, username in enumerate(self.usernames):
+            characters = []
+            characters_zeny = []
+            if 'link-to-character' in self.account_htmls[i]:
+                name_string = self.account_htmls[i].split('"link-to-character">')
+                del name_string[0]
+                for name in name_string:
+                    characters.append(name.split("</a>")[0])
+                    characters_zeny.append(name.split('<td>')[4].split('</td>')[0] + 'z')
+                total_zeny = self.account_htmls[i].split("Total Zeny: <strong>")[1].split("</strong>")[0] + 'z'
+                self.accounts[username]['characters'] = characters
+                self.accounts[username]['characters_zeny'] = characters_zeny
+                self.accounts[username]['total_zeny'] = total_zeny
+            else:
+                self.accounts[username]['characters'] = ['']
+                self.accounts[username]['characters_zeny'] = ['']
+                self.accounts[username]['total_zeny'] = '0z'
 
-        #for item in self.items.values():
-        #    item['short_med'], item['long_med'] = None, None
+        # await self.main.db.nova.users.update_one({'channel': self.main.channel}, {'$set': {'accounts': accounts}})
 
-    async def sold_notification(self, username_cookie, show_usernames, show_notification, pause):
+    async def sold_notification(self):
         start = datetime.now(pytz.timezone('US/Pacific')).replace(second=0, microsecond=0)
         url = 'https://www.novaragnarok.com/?module=account&action=sellinghistory'
-
-        k = 0
         item = {}
-
-        while username_cookie: # Different accounts
-            for username, cookie in username_cookie.items():
-                await pause.wait()
-
-                try:
-                    html = await self.network_session(url, cookie)
-                except:
-                    del username_cookie[username]
-                    continue
-                else:
-                    self.username_zeny[username] = await self.account_zeny(username, cookie)
-                    
-                await show_usernames()
-
-                i = j = back = found = 0
+        while self.settings['browser'] != 'none':
+            self.sell_htmls = (await gather(*[self.network_session(url, each) for each in self.cookies]))
+            for html in self.sell_htmls:
                 items = []
-                while True: # Characters in same Account
+                i = 0
+                while True:
                     try:
                         search = html.rsplit('Selling History', 1)[1].split('data-order', i + 1)[i + 1]
                         time = search.split('</td>', 1)[0].rsplit('>', 1)[1]
@@ -380,94 +396,58 @@ class NovaNotifier():
                         item['price'] = search.split('</span>z', 2)[1].rsplit('>', 1)[1]
                         # ea_price = start.split('</span>z', 1)[0].rsplit('>', 1)[1]
                         if self.date(time, start, args=1):  # Check if item time is newer than program start time
-                            if not back:  # First count all new items since program start running
-                                j += 1
-                                i += 4  # Next item 4 'data-orders' ahead
-                                continue
-                        if found:
-                            k += 1
                             if int(item['price'].replace(',', '')) >= self.settings['sell_filter'] * 0.97:
                                 items.append(item)
-
-                            if j == k:
-                                found = 0
-                            else:
-                                i += 4  # More items to notify, go to next one
+                                i += 4  # Next item 4 'data-orders' ahead
                                 continue
-
-                        if j > k:
-                            found, back, i = 1, 1, 0  # Return to list start to send notifications
-                            continue
-
-                        if items:
-                            create_task(self.notification(items))
-                            await show_notification(f"{item['ea']}x {item['name']} [{item['prop']}] - {item['price']}z")
-
-                    except IndexError:  # Player could have sold nothing in game yet
+                        elif items:
+                            await self.notification(sell_item=items)
+                            # time = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                    except IndexError:  # Did not sell anything in game yet
                         pass
-
+                    except Exception:
+                        return
                     break
-            await sleep(15)
+            start = start + timedelta(minutes=1)
+            await sleep(60)
 
-    async def price_notification(self):
-        # Save item to prevent future notifications
-        msg = []
-        for key in self.notify:
-            if self.notify[key]:
-                msg.append(self.items[key])
-                self.notify[key] = False
-        if msg:
-            create_task(self.notification(msg))
+    async def notification(self, sell_item=None):
+        # Save items first to prevent duplicate notifications
+        if sell_item:
+            items = sell_item
+        else:
+            items = []
+            for key in self.notify:
+                if self.notify[key]:
+                    items.append(self.items[key])
+                    self.notify[key] = False
 
-    async def notification(self, items):
-        if self.channel:
-            for item in items:
-                if 'id' in item:  # Market Alert
+        for item in items:
+            # Price Alert
+            if 'id' in item:
+                if self.settings['price_notification']:
                     location = item['location'].replace('\n', '')
                     url = 'https://www.novaragnarok.com/?module=vending&action=item&id=' + item['id']
-                    msg = (f"Item: {item['format_refine']} {item['name']}\nProperty: {item['format_property']}\n" +
-                           f"Location: {location}\nAlert: {item['format_alert']}\nPrice: {item['format_price']}\n{url}")
-                    await self.db.nova.users.update_one({'channel': self.channel}, {'$push': {'price_alert': msg}, '$set': {'price_flag': True}})
-                else:  # Sold Alert
-                    msg = f"Item: {item['ea']}x {item['name']}\nProp: {item['prop']}\nPrice: {item['price']}"
-                    await self.db.nova.users.update_one({'channel': self.channel}, {'$push': {'sold_alert': msg}, '$set': {'sold_flag': True}})
-
-        # Send Windows Notification
-        if platform == "win32":
-            toast = []
-            i = 0
-            for i, item in enumerate(items):
-                toast.append(ToastNotifier())
-                if 'id' in item:  # Market Alert
-                    location = item['location'].replace('\n', '')
-                    msg = (f"{item['format_refine']} {item['name']}\nProp: {item['format_property']}\n\n" +
-                           f"{item['format_price']} | {location}")  # Price notification
-                else:  # Sold Alert
-                    msg = f"{item['ea']}x {item['name']}\nProp: {item['prop']}\n\nSold: {item['price']}z"  # Sold notification
-
-                toast[i].show_toast("NovaMarket", msg, threaded=True, icon_path='Icons/icon.ico', duration=None)
-                await sleep(2)
-
-    async def account_zeny(self, username, cookie):
-        url = 'https://www.novaragnarok.com/?module=account&action=view'
-        html = await self.network_session(url, cookie)
-
-        #while True:
-        #    try:
-        #        character_name = html.split('"link-to-character">')[1].split("</a>")[0]
-        #        character_zeny = html.split('"link-to-character">')[1].split('<td>')[4].split('</td>')[0]
-        #        character_zeny[character_name] = format(character_zeny, ',d') + 'z'
-        #    except:
-        #        pass
-        
-        try:
-            total_zeny = html.split("<strong>")[1].split("</strong>")[0] + 'z'
-        except:
-            return '0z'
-        else:
-            return total_zeny
-
-        # await self.db.nova.users.update_one({'channel': self.channel}, {'$set': {'accounts': accounts}})
+                    if self.settings['discord_notification'] and self.main.discord_channel:
+                        msg = (f"{item['name']}\nRefine: {item['format_refine']}\nProperty: {item['format_property']}\n" +
+                               f"Alert: {item['format_alert']}\nPrice: {item['format_price']}\nLocation: {location}\n\n{url}")
+                        await self.main.db.nova.users.update_one({'channel': self.main.discord_channel}, {'$push': {'price_alert': msg}, '$set': {'price_flag': True}})
+                    if self.settings['system_notification'] and platform == "win32":
+                        msg = (f"{item['format_refine']} {item['name']}\nProp: {item['format_property']}\n\n" +
+                               f"{item['format_price']} | {location}")
+                        toast = ToastNotifier()
+                        toast.show_toast("NovaMarket", msg, threaded=True, icon_path=self.icon_path, duration=None)
+                        await sleep(1)
+            # Sell Alert
+            elif self.settings['sell_notification']:
+                if self.settings['discord_notification'] and self.main.discord_channel:
+                    msg = f"{item['ea']}x {item['name']}\nProp: {item['prop']}\nPrice: {item['price']}"
+                    await self.main.db.nova.users.update_one({'channel': self.main.discord_channel}, {'$push': {'sold_alert': msg}, '$set': {'sold_flag': True}})
+                if self.settings['system_notification'] and platform == "win32":
+                    msg = f"{item['ea']}x {item['name']}\nProp: {item['prop']}\n\nSold: {item['price']}z"
+                    toast = ToastNotifier()
+                    toast.show_toast("NovaMarket", msg, threaded=True, icon_path=self.icon_path, duration=None)
+                    await sleep(1)
 
     def date(self, date, interval, today=None, args=None):
         if not args:
@@ -497,7 +477,7 @@ class NovaNotifier():
             else:
                 return 0  # old
 
-    def format(self, items):
+    def formatting(self, items):
         for key, item in items.items():
             location, format_refine, format_prop = self.price_search(item, key)
 
@@ -509,7 +489,7 @@ class NovaNotifier():
                 item['format_long_med'] = format(item['long_med'], ',d') + 'z'
                 item['short_med_perc'], item['long_med_perc'] = self.percentage(item)
                 item['format_alert'] = format(item['alert'], ',d') + 'z'
-                item['location'] = location.split(',', 1)[0] + '\n' + location.split(',', 1)[1]
+                item['location'] = location.split(',', 1)[0] + '\n ' + location.split(',', 1)[1]
             else:
                 item['format_price'] = '-'
                 item['ea'] = '-'
@@ -522,14 +502,14 @@ class NovaNotifier():
     def price_search(self, item, key):
         """ Return: Cheapest Item Location and Format_Refine """
 
-        info = {'median': item['short_med'], 'cheap_total': 0, 'cheapest_total': 0, 
+        info = {'median': item['short_med'], 'cheap_total': 0, 'cheapest_total': 0,
                 'cheapest_location': None, 'cheapest_price': 1000000000, 'alert': item['alert']}
         minor_refine = item['refine']
         format_refine = f"+{item['refine']}"
         format_prop = item['property']
 
         for each in self.market_data[item['id']]:
-            if 'refine' in each['orders']: 
+            if 'refine' in each['orders']:
                 refine = each['orders']['refine']
                 if refine >= item['refine']:
                     if prop := self.property_check(each, item['property']):
@@ -547,7 +527,7 @@ class NovaNotifier():
             format_refine = f"+{minor_refine}"
 
         item['price'] = info['cheapest_price']
-        item['ea'] = f'{info["cheapest_total"]}/{info["cheap_total"]}'
+        item['ea'] = f'{info["cheapest_total"]} / {info["cheap_total"]}'
 
         return info['cheapest_location'], format_refine, format_prop
 
@@ -556,13 +536,13 @@ class NovaNotifier():
             ea = item['orders']['qty']
         else:
             ea = 1
-        
+
         info['cheap_total'] += ea
         price = item['orders']['price']
 
         if price == info['cheapest_price']:
             info['cheapest_total'] += ea
-                
+
         elif price < info['cheapest_price']:
             info['cheapest_price'] = price
             info['cheapest_location'] = item['orders']['location'].strip()
@@ -590,10 +570,10 @@ class NovaNotifier():
 
         # Property Column
         else:
-            try: 
+            try:
                 end = web_prop['items']['property'].split("</a>, ")[-1].split('<')[0].split('. ')
-            except:
-                pass
+            except Exception:
+                pass  # Must be here the problem
 
             web_result = []
             first_split = web_prop['items']['property'].split("'>")[1:]
@@ -601,7 +581,7 @@ class NovaNotifier():
                 web_result.append(each.split('</a>')[0])
 
             if not web_result:
-                web_result = web_prop['items']['property'].split("> ")[1].split('<')[0].split('. ')
+                web_result = web_prop['items']['property'].split('>')[1].split('<')[0].split('. ')
                 web_result[-1] = web_result[-1].rstrip('.')
             elif end[0]:
                 end[-1] = end[-1].rstrip('.')
@@ -627,7 +607,7 @@ class NovaNotifier():
                 return item_prop + web_result
 
             return item_prop
-            
+
     def percentage(self, item):
         if item['long_med']:
             if item['long_med'] > item['price']:
@@ -662,9 +642,9 @@ class NovaNotifier():
         self.result = []
         for key, item in items.items():
             self.result.append(
-                [item['id'], item['name'], item['format_refine'], item['format_property'], 
-                item['format_price'], item['ea'], item['format_short_med'], item['format_long_med'],
-                item['short_med_perc'], item['long_med_perc'], item['format_alert'], item['location'], key])
+                [item['id'], item['name'], item['format_refine'], item['format_property'],
+                 item['format_price'], item['ea'], item['format_short_med'], item['format_long_med'],
+                 item['short_med_perc'], item['long_med_perc'], item['format_alert'], item['location'], key])
 
     def save_data(self, items):
         save = {}
