@@ -7,13 +7,15 @@ from PySide2.QtGui import QColor, QPixmap
 
 
 class MainWindow(QWidget):
+    resize_flag = False
+
     def ui(self, MainWindow0):
         self.setWindowTitle('Nova Notifier')
 
         headers = ['ID', 'NAME', 'REFINE', 'PROP', 'PRICE', 'EA',
                    'SHORT MED', 'LONG MED', 'SM%', 'LM%', 'ALERT', 'LOCATION']
 
-        self.resize_flag = False
+        MainWindow.resize_flag = False
         self.font_color = {"alert": QColor(46, 208, 60), "yes": QColor(43, 126, 35),
                            "no": QColor(148, 33, 24), "default": QColor(255, 255, 255),
                            "gold": QColor(255, 173, 39)}
@@ -127,7 +129,7 @@ class MainWindow(QWidget):
         self.btn_stop.clicked.connect(self.switch_stop)
         self.btn_pause.clicked.connect(self.switch_pause)
 
-        self.resize_flag = True
+        MainWindow.resize_flag = True
 
     def eventFilter(self, source, event):
         num = event.type()
@@ -143,8 +145,8 @@ class MainWindow(QWidget):
         return super(MainWindow, self).eventFilter(source, event)
 
     def resizeEvent(self, event):
-        if self.resize_flag:
-            self.resize_flag = False
+        if MainWindow.resize_flag:
+            MainWindow.resize_flag = False
             self.resize_timer.singleShot(1000, self.restore_headers)
             self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
