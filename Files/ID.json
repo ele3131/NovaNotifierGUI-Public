@@ -1,13 +1,1 @@
-{
-    "('32109', '0', 'None')": {
-        "id": "32109",
-        "name": "Event Ticket",
-        "refine": 0,
-        "alert": 150000,
-        "property": [
-            "None"
-        ],
-        "short_med": 106000,
-        "long_med": 109000
-    }
-}
+{}
