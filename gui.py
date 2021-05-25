@@ -1,172 +1,172 @@
 import css
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtWidgets import QPushButton, QSpacerItem, QSizePolicy, QButtonGroup, \
-                            QStackedWidget, QLabel, QWidget, QVBoxLayout, QHBoxLayout, \
-                            QTableWidgetItem, QTableWidget, QTreeView
-from PyQt5.QtGui import QColor, QIcon
+from PySide2.QtCore import Qt, QSize, QTimer
+from PySide2.QtWidgets import QLabel, QWidget, QPushButton, QTableWidget, \
+                            QAbstractScrollArea, QAbstractItemView, QHBoxLayout, \
+                            QVBoxLayout, QHeaderView, QGraphicsColorizeEffect
+from PySide2.QtGui import QColor, QPixmap
 
 
-class MainWindow(object):
+class MainWindow(QWidget):
     def ui(self, MainWindow0):
         self.setWindowTitle('Nova Notifier')
 
-        tbl_data = ["TEST" for i in range(13)]
-        tbl_data = []
         headers = ['ID', 'NAME', 'REFINE', 'PROP', 'PRICE', 'EA',
                    'SHORT MED', 'LONG MED', 'SM%', 'LM%', 'ALERT', 'LOCATION']
-        # time_last = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        # self.notification = ''
 
-        self.item_index = 0
+        self.resize_flag = False
         self.font_color = {"alert": QColor(46, 208, 60), "yes": QColor(43, 126, 35),
                            "no": QColor(148, 33, 24), "default": QColor(255, 255, 255),
                            "gold": QColor(255, 173, 39)}
 
-        """
-        Widgets
-        """
+        # Logo
+        self.logo = QLabel()
+        self.logo_img = QPixmap('Files/Icons/App/main.png')
+        self.logo_img = self.logo_img.scaled(142, 85, Qt.KeepAspectRatio)
+        self.logo.setPixmap(self.logo_img)
+        self.logo.resize(self.logo_img.width()/4, self.logo_img.height()/4)
 
-        self.vertical_spacer = QSpacerItem(60, 20, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.horizontal_spacer = QSpacerItem(60, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.custom_spacer = QSpacerItem(60, 10)
+        # Top Buttons
+        btn_names = ["btn_start", "btn_stop", "btn_pause",
+                     "btn_refresh", "btn_opt", "btn_add",
+                     "btn_discord", "btn_help", "btn_accounts"]
 
-        self.btn_add_item = QPushButton('ADD ITEM')
-        self.btn_help = QPushButton('HELP')
-        self.btn_start = QPushButton('START')
-        self.btn_stop = QPushButton('STOP')
-        self.btn_pause = QPushButton('PAUSE')
-        self.btn_resume = QPushButton('RESUME')
-        self.btn_refresh = QPushButton('REFRESH')
+        self.buttons = []
 
-        # Button groups
-        self.btn_grp = QButtonGroup()
-        self.btn_grp.setExclusive(True)
-        self.btn_grp.addButton(self.btn_pause)
-        self.btn_grp.addButton(self.btn_resume)
-        self.btn_grp.addButton(self.btn_start)
-        self.btn_grp.addButton(self.btn_stop)
-        self.btn_grp.buttonClicked.connect(self.switch_buttons)
+        for button in btn_names:
+            button_self = f"self.{button}"
+            effect = f"self.{button}_effect"
+            setattr(self, button, QPushButton(objectName=button_self))
+            setattr(self, button + '_effect', QGraphicsColorizeEffect(self))
+            eval(effect).setColor(Qt.white)
+            eval(button_self).setGraphicsEffect(eval(effect))
+            eval(button_self).setIconSize(QSize(64, 64))
+            eval(button_self).installEventFilter(self)
+            self.buttons.append(eval(button_self))
 
-        # Button stacks
-        self.stk_pause_resume = QStackedWidget()
-        self.stk_pause_resume.setMaximumWidth(self.stk_pause_resume.width() / 2)
-        self.stk_pause_resume.addWidget(self.btn_pause)
-        self.stk_pause_resume.addWidget(self.btn_resume)
-        self.stk_start_stop = QStackedWidget()
-        self.stk_start_stop.setMaximumHeight(20)
-        self.stk_start_stop.addWidget(self.btn_start)
+        # Timer
+        self.resize_timer = QTimer()
 
-        # Options buttons
-        self.btn_opt = QPushButton()
-        self.btn_opt.setIcon(QIcon('Icons/cog.png'))
-        self.btn_opt.setIconSize(QSize(24, 24))
-        self.btn_opt.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.btn_opt.setFixedWidth(25)
-        self.btn_discord = QPushButton()
-        self.btn_discord.setIcon(QIcon('Icons/discord.ico'))
-        self.btn_discord.setIconSize(QSize(24, 24))
-        self.btn_discord.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.btn_discord.setFixedWidth(25)
-
-        self.lbl_refresh = QLabel(' ')
-        self.lbl_last_notif = QLabel('Host: Not Hosting!')
-        self.lbl_accounts = QLabel('ACCOUNTS: ')
-        self.lbl_acc = QLabel(' ')
+        # Accounts
+        self.lbl_refresh = QLabel()
+        self.lbl_refresh.setAlignment(Qt.AlignCenter)
+        self.lbl_accounts = QLabel('Accounts: ')
+        self.lbl_acc = QLabel()
         self.lbl_acc.setAlignment(Qt.AlignCenter)
         self.lbl_acc.setWordWrap(True)
-        self.tbl = QTableWidget(len(tbl_data), len(headers))
-        self.tbl.setVerticalScrollMode(QTreeView.ScrollPerPixel)
+
+        # Table
+        self.tbl = QTableWidget(0, len(headers))
         self.tbl.setHorizontalHeaderLabels(headers)
-        self.tbl.setCornerButtonEnabled(False)
-        self.tbl.horizontalHeader().setSectionResizeMode(True)
-        self.tbl.verticalHeader().setSectionResizeMode(False)
-        self.tbl.verticalHeader().setMinimumSectionSize(70)
-        col = 0
-        for i, item in enumerate(tbl_data):
-            tbl_items = QTableWidgetItem(item)
-            tbl_items.setForeground(self.font_color["yes"])
-            tbl_items.setFlags(Qt.ItemIsEnabled)
-            self.tbl.setItem(i, col, tbl_items)
-            col += 1
+        self.tbl.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
+        self.tbl.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tbl.setSelectionMode(QAbstractItemView.NoSelection)
+        self.tbl.setFocusPolicy(Qt.NoFocus)
 
-        """
-        Layouts
-        """
-
+        # Layouts
         self.lyt_top = QHBoxLayout()
-        for i in [self.stk_start_stop, self.btn_refresh, self.btn_add_item, self.btn_help]:
-            self.lyt_top.addWidget(i)
-
-        self.lyt_items = QVBoxLayout()
-        self.lyt_items.addWidget(self.tbl)
-
-        self.container_lyt_accounts = QWidget()
-        self.lyt_accounts = QVBoxLayout(self.container_lyt_accounts)
-        self.lyt_accounts.addWidget(self.lbl_accounts)
-        self.lyt_accounts.addItem(self.custom_spacer)
-        self.lyt_accounts.addWidget(self.lbl_acc)
-        self.lyt_accounts.addItem(self.vertical_spacer)
-        self.lyt_accounts.addWidget(self.btn_opt)
-        self.lyt_accounts.addWidget(self.btn_discord)
-
-        self.container_lyt_notif = QWidget()
-        self.lyt_notif = QHBoxLayout(self.container_lyt_notif)
-        self.lyt_notif.addWidget(self.lbl_last_notif)
-        self.lyt_notif.addItem(self.horizontal_spacer)
-        self.lyt_notif.addWidget(self.lbl_refresh)
-
-        self.container_lyt_stop_pause = QWidget()
-        self.lyt_stop_pause = QHBoxLayout(self.container_lyt_stop_pause)
-        self.lyt_stop_pause.setContentsMargins(0, 0, 0, 0)
-        self.lyt_stop_pause.addWidget(self.btn_stop)
-        self.lyt_stop_pause.addWidget(self.stk_pause_resume)
-        self.stk_start_stop.addWidget(self.container_lyt_stop_pause)
+        self.lyt_top.addWidget(self.logo)
+        self.lyt_top.addStretch()
+        self.lyt_top.addWidget(self.btn_stop)
+        self.lyt_top.addWidget(self.btn_start)
+        self.lyt_top.addWidget(self.btn_pause)
+        self.lyt_top.addWidget(self.btn_refresh)
+        self.lyt_top.addStretch()
+        self.lyt_top.addWidget(self.btn_help)
 
         self.lyt_bottom = QHBoxLayout()
-        self.lyt_bottom.addWidget(self.container_lyt_accounts)
-        self.lyt_bottom.addLayout(self.lyt_items)
+        self.lyt_bottom.addWidget(self.btn_opt)
+        self.lyt_bottom.addStretch()
+        self.lyt_bottom.addWidget(self.btn_accounts)
+        self.lyt_bottom.addWidget(self.btn_add)
+        self.lyt_bottom.addStretch()
+        self.lyt_bottom.addWidget(self.btn_discord)
 
         self.lyt_main = QVBoxLayout()
+        self.lyt_main.setContentsMargins(0, 0, 0, 0)
         self.lyt_main.addLayout(self.lyt_top)
-        self.lyt_main.addWidget(self.container_lyt_notif)
+        self.lyt_main.addWidget(self.lbl_refresh)
+        self.lyt_main.addWidget(self.tbl)
         self.lyt_main.addLayout(self.lyt_bottom)
 
         widget = QWidget()
         widget.setLayout(self.lyt_main)
         self.setCentralWidget(widget)
-        # self.setFixedSize(1287, 260)
-        self.resize(1400, 600)
+        self.resize(self.frameGeometry().width()*1.8, self.frameGeometry().height()*1.1)
 
-        """
-            Styling
-        """
-
-        for i in [self.btn_start, self.btn_stop, self.btn_pause, self.btn_resume,
-                  self.btn_refresh, self.btn_help, self.btn_add_item]:
-            i.setStyleSheet(css.btn())
+        # Styling
+        self.btn_start.setStyleSheet(css.btn_start())
+        self.btn_stop.setStyleSheet(css.btn_stop())
+        self.btn_pause.setStyleSheet(css.btn_pause())
+        self.btn_refresh.setStyleSheet(css.btn_refresh())
         self.btn_opt.setStyleSheet(css.btn_opt())
-        self.btn_discord.setStyleSheet(css.btn_opt())
+        self.btn_add.setStyleSheet(css.btn_add())
+        self.btn_discord.setStyleSheet(css.btn_discord())
+        self.btn_help.setStyleSheet(css.btn_help())
+        self.btn_accounts.setStyleSheet(css.btn_accounts())
 
         self.tbl.setStyleSheet(css.tbl())
         self.tbl.horizontalHeader().setStyleSheet(css.header())
-        self.tbl.verticalHeader().setStyleSheet(css.header())
         self.tbl.horizontalScrollBar().setStyleSheet(css.scrollbar())
         self.tbl.verticalScrollBar().setStyleSheet(css.scrollbar())
 
         self.lbl_acc.setStyleSheet(css.lbl_acc())
         self.lbl_accounts.setStyleSheet(css.lbl())
-        self.lbl_refresh.setStyleSheet(css.lbl())
-        self.lbl_last_notif.setStyleSheet(css.lbl())
+        self.lbl_refresh.setStyleSheet(css.lbl_refresh())
 
-        self.container_lyt_notif.setStyleSheet(css.notif())
-        self.container_lyt_accounts.setStyleSheet(css.container())
+        # Hides
+        self.btn_stop.hide()
+        self.btn_pause.hide()
+        self.btn_refresh.hide()
+        self.lbl_refresh.hide()
+        self.tbl.verticalHeader().hide()
+        self.tbl.horizontalHeader().hide()
+        self.btn_accounts.hide()
 
-    def switch_buttons(self, btn):
-        if btn.text() == "PAUSE":
-            self.stk_pause_resume.setCurrentIndex(1)
-        if btn.text() == "RESUME":
-            self.stk_pause_resume.setCurrentIndex(0)
-        if btn.text() == "START":
-            self.stk_start_stop.setCurrentIndex(1)
-        if btn.text() == "STOP":
-            self.stk_start_stop.setCurrentIndex(0)
+        # Connects
+        self.btn_start.clicked.connect(self.switch_start)
+        self.btn_stop.clicked.connect(self.switch_stop)
+        self.btn_pause.clicked.connect(self.switch_pause)
+
+        self.resize_flag = True
+
+    def eventFilter(self, source, event):
+        num = event.type()
+        if num == 127:
+            name = source.objectName()
+            effect = name + '_effect'
+            eval(effect).setColor(QColor(255, 213, 0))
+        elif num == 128:
+            name = source.objectName()
+            effect = name + '_effect'
+            eval(effect).setColor(Qt.white)
+
+        return super(MainWindow, self).eventFilter(source, event)
+
+    def resizeEvent(self, event):
+        if self.resize_flag:
+            self.resize_flag = False
+            self.resize_timer.singleShot(1000, self.restore_headers)
+            self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def restore_headers(self):
+        self.resize_flag = True
+        self.tbl.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.tbl.horizontalHeader().setSectionResizeMode(11, QHeaderView.Stretch)
+
+    def switch_start(self):
+        self.btn_start.hide()
+        self.lbl_refresh.show()
+        self.btn_pause.show()
+        self.btn_refresh.show()
+        self.btn_stop.show()
+
+    def switch_stop(self):
+        self.btn_stop.hide()
+        self.btn_refresh.hide()
+        self.btn_pause.hide()
+        self.btn_start.show()
+        self.not_running = True
+
+    def switch_pause(self):
+        self.btn_pause.hide()
+        self.btn_start.show()
